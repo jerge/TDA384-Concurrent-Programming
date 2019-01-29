@@ -22,7 +22,6 @@ public class Main {
         int train1_speed = Integer.parseInt(args[1]);
         int train2_speed = Integer.parseInt(args[2]);
         int tsim_speed = (args.length >= 4) ? Integer.parseInt(args[3]) : 20;
-
         String tsim;
         if (Files.exists(Paths.get(TSIM_PATH_ON_LAB_COMPUTERS))) {
             tsim = TSIM_PATH_ON_LAB_COMPUTERS;
