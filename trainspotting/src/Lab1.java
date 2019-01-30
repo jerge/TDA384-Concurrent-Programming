@@ -17,7 +17,7 @@ public class Lab1 {
   private Semaphore cross = new Semaphore(1);
   private Semaphore up = new Semaphore(1);
   private Semaphore left = new Semaphore(1);
-  private Semaphore middown = new Semaphore(1);
+  private Semaphore mid = new Semaphore(1);
   private Semaphore right = new Semaphore(1);
   private Semaphore down = new Semaphore(1);
 
@@ -50,8 +50,8 @@ public class Lab1 {
     SOUTHDOWN
   }
 
+  // Position to sensor map
   private Map<Point2D,SensorName> posSensor = new HashMap<>();
-
 
   public Lab1(int speed1, int speed2) {
     TSimInterface tsi = TSimInterface.getInstance();
@@ -62,8 +62,8 @@ public class Lab1 {
       train1.setSpeed(speed1);
       train2.setSpeed(speed2);
 
-      tsi.setSwitch(4,9,0x01);
-      tsi.setSwitch(15,9,0x02);
+      tsi.setSwitch(4,9,1);
+      tsi.setSwitch(15,9,2);
       init();
     }
     catch (CommandException e) {
@@ -76,11 +76,7 @@ public class Lab1 {
 
   }
 
-  private void init() throws CommandException{
-    //train1.setSpeed(10);
-    //train2.setSpeed(10);
-
-
+  private void init(){
     posSensor.put(new Point2D(15,3), SensorName.NORTHNORTHSTATION);
     posSensor.put(new Point2D(15,5), SensorName.NORTHSOUTHSTATION);
 
@@ -118,7 +114,9 @@ public class Lab1 {
     private int speed = 0;
     private final int maxSpeed;
 
+    // Saves the last activated sensor to know which direction you came from
     private SensorName lastTrippedSensor = null;
+    // Saves semaphores to make sure you only release if you own the semaphore
     private List<Semaphore> semaphores = new ArrayList<>(2);
 
     Train(int id, TSimInterface tsim, int maxSpeed) {
@@ -131,206 +129,8 @@ public class Lab1 {
     void setSpeed(int spd) throws CommandException{
       spd = min(maxSpeed, spd);
       this.speed = spd;
-
       tsim.setSpeed(id, speed*direction);
     }
-
-    synchronized void waitForAcquire(Semaphore semaphore) throws InterruptedException, CommandException {
-      if (!semaphore.tryAcquire()){
-        setSpeed(0);
-        semaphore.acquire();
-        setSpeed(maxSpeed);
-        semaphores.add(semaphore);
-      }
-    }
-
-    /*void updateSemaphore(Semaphore semaphore) {
-      if (semaphore == currentSemaphore) {
-        currentSemaphore = lastSemaphore;
-        lastSemaphore = null;
-      } else if (lastSemaphore == semaphore) {
-        lastSemaphore = null;
-      } else {
-        lastSemaphore = currentSemaphore;
-        currentSemaphore = semaphore;
-      }
-
-    }*/
-
-    void releaseSemaphore(Semaphore semaphore) {
-      semaphore.release();
-      semaphores.remove(semaphore);
-    }
-
-    void pollSensorEvent(SensorEvent sensor) throws InterruptedException, CommandException{
-      SensorName sensorName = posSensor.get((new Point2D(sensor.getXpos(),sensor.getYpos())));
-      System.out.println(sensorName);
-      if (sensor.getStatus() == SensorEvent.ACTIVE) {
-        switch (sensorName) {
-          case NORTHNORTHSTATION:
-            stopAtStation();
-            break;
-          case NORTHSOUTHSTATION:
-            stopAtStation();
-            break;
-          case SOUTHNORTHSTATION:
-            stopAtStation();
-            break;
-          case SOUTHSOUTHSTATION:
-            stopAtStation();
-            break;
-          case NORTHCROSS:
-            if (lastTrippedSensor == SensorName.NORTHSOUTHSTATION) {
-              waitForAcquire(cross);
-            } else {
-              releaseSemaphore(cross);
-            }
-            break;
-          case WESTCROSS:
-            if (lastTrippedSensor == SensorName.NORTHNORTHSTATION) {
-              waitForAcquire(cross);
-            } else {
-              releaseSemaphore(cross);
-            }
-            break;
-          case EASTCROSS:
-            if (lastTrippedSensor == SensorName.WESTUP) {
-              waitForAcquire(cross);
-            } else {
-              releaseSemaphore(cross);
-            }
-            break;
-          case SOUTHCROSS:
-            if (lastTrippedSensor == SensorName.SOUTHUP) {
-              waitForAcquire(cross);
-            } else {
-              releaseSemaphore(cross);
-            }
-            break;
-          case WESTUP:
-            if (lastTrippedSensor == SensorName.EASTCROSS) {
-              waitForAcquire(right);
-              tsim.setSwitch(17,7,0x02);
-            } else {
-              releaseSemaphore(right);
-            }
-            break;
-          case EASTUP:
-            if (lastTrippedSensor == SensorName.EASTRIGHT) {
-              if (up.tryAcquire()) {
-                semaphores.add(up);
-                tsim.setSwitch(17,7,0x01);
-              } else {
-                tsim.setSwitch(17,7,0x02);
-              }
-            } else if (lastTrippedSensor == SensorName.SOUTHUP){
-              releaseSemaphore(up);
-            }
-            break;
-          case SOUTHUP:
-            if ( lastTrippedSensor == SensorName.SOUTHCROSS) {
-              waitForAcquire(right);
-              tsim.setSwitch(17,7,0x01);
-            } else {
-              releaseSemaphore(right);
-            }
-            break;
-          case WESTLEFT:
-            if (lastTrippedSensor == SensorName.WESTDOWN) {
-              if (middown.tryAcquire()) {
-                semaphores.add(middown);
-                tsim.setSwitch(4,9,0x01);
-              } else {
-                tsim.setSwitch(4,9,0x02);
-              }
-            } else if (semaphores.contains(middown)){
-              releaseSemaphore(middown);
-            }
-            break;
-          case EASTLEFT:
-            if (lastTrippedSensor == SensorName.WESTRIGHT) {
-              waitForAcquire(left);
-              tsim.setSwitch(4,9,0x01);
-            } else {
-              releaseSemaphore(left);
-            }
-            break;
-          case SOUTHLEFT:
-            if (lastTrippedSensor == SensorName.SOUTHRIGHT) {
-              waitForAcquire(left); // Should this be synchronized with setSwitch?
-              tsim.setSwitch(4,9,0x02);
-            } else {
-              releaseSemaphore(left);
-            }
-            break;
-          case WESTRIGHT:
-            if (lastTrippedSensor == SensorName.EASTLEFT) {
-              waitForAcquire(right);
-              tsim.setSwitch(15, 9, 0x02);
-            } else {
-              releaseSemaphore(right);
-            }
-            break;
-          case EASTRIGHT:
-            if (lastTrippedSensor == SensorName.EASTUP) {
-              if (middown.tryAcquire()) {
-                semaphores.add(middown);
-                tsim.setSwitch(15,9,0x02);
-              } else {
-                tsim.setSwitch(15,9,0x01);
-              }
-            } else if (semaphores.contains(middown)) {
-              releaseSemaphore(middown);
-            }
-            break;
-          case SOUTHRIGHT:
-            if (lastTrippedSensor == SensorName.SOUTHLEFT) {
-              waitForAcquire(right);
-              tsim.setSwitch(15,9,0x01);
-            } else {
-              releaseSemaphore(right);
-            }
-            break;
-          case WESTDOWN:
-            if (lastTrippedSensor == SensorName.WESTLEFT) {
-              if (down.tryAcquire()) {
-                semaphores.add(down);
-                tsim.setSwitch(3,11,0x02);
-              } else {
-                tsim.setSwitch(3,11,0x01);
-              }
-            } else if (lastTrippedSensor == SensorName.SOUTHDOWN){
-              releaseSemaphore(down);
-            }
-            break;
-          case EASTDOWN:
-            if (lastTrippedSensor == SensorName.SOUTHNORTHSTATION) {
-              waitForAcquire(left);
-              tsim.setSwitch(3,11,0x01);
-            } else {
-              releaseSemaphore(left);
-            }
-            break;
-          case SOUTHDOWN:
-            if (lastTrippedSensor == SensorName.SOUTHSOUTHSTATION) {
-              waitForAcquire(left);
-              tsim.setSwitch(3,11,0x02);
-            } else {
-              releaseSemaphore(left);
-            }
-            break;
-        }
-        /*System.out.println(middown.availablePermits() + " " + semaphores.contains(middown));
-        if (middown.availablePermits() > 1) {
-          middown = null;
-          middown.release();
-        }*/
-      }
-      lastTrippedSensor = sensorName;
-
-    }
-
-
 
     void stopAtStation() throws InterruptedException, CommandException{
       setSpeed(0);
@@ -339,12 +139,146 @@ public class Lab1 {
       setSpeed(maxSpeed);
     }
 
+    void waitForAcquire(Semaphore semaphore) throws InterruptedException, CommandException {
+      if (!semaphore.tryAcquire()){
+        setSpeed(0);
+        semaphore.acquire();
+        setSpeed(maxSpeed);
+        semaphores.add(semaphore);
+      }
+    }
+
+    void releaseSemaphore(Semaphore semaphore) {
+      semaphore.release();
+      semaphores.remove(semaphore);
+    }
+
+    void tryToAcquire(Semaphore semaphore, int x, int y, int dir) throws CommandException{
+      if (semaphore.tryAcquire()) {
+        semaphores.add(semaphore);
+        tsim.setSwitch(x,y,dir);
+      } else {
+        dir = dir%2+1;  // Invert direction
+        tsim.setSwitch(x,y,dir);
+      }
+    }
+
+    /**
+     * Does different actions for each sensor when one is activated (does nothing upon inactive).
+     * Upon reaching a semaphore either the train waits to acquire it and then continues after
+     * achieving it.
+     * Or the train decides direction whether the semaphore is available.
+     * After passing it makes sure it releases the semaphore.
+     * @param sensor the SensorEvent which has happened
+     * @throws InterruptedException
+     * @throws CommandException
+     */
+    synchronized void pollSensorEvent(SensorEvent sensor) throws InterruptedException, CommandException{
+      SensorName sensorName = posSensor.get((new Point2D(sensor.getXpos(),sensor.getYpos())));
+      if (sensor.getStatus() == SensorEvent.ACTIVE) { // Only do action when you activate a sensor
+        switch (sensorName) {                         // Depending on the sensor, do different stuff
+          // At Semaphores make sure you: Acquire the semaphore to pass, or release it if you have passed
+          // At stations stop and turn around. Due to max speed <= 15 the train will not pass the
+          //  sensor and activate it multiple times
+          // In some cases you have to wait in order to acquire,
+          //  other times you have to switch direction
+          case NORTHNORTHSTATION:
+          case NORTHSOUTHSTATION:
+          case SOUTHNORTHSTATION:
+          case SOUTHSOUTHSTATION:
+            stopAtStation();
+            break;
+          case NORTHCROSS:
+            if (lastTrippedSensor == SensorName.NORTHSOUTHSTATION) waitForAcquire(cross);
+            else releaseSemaphore(cross);
+            break;
+          case WESTCROSS:
+            if (lastTrippedSensor == SensorName.NORTHNORTHSTATION) waitForAcquire(cross);
+            else releaseSemaphore(cross);
+            break;
+          case EASTCROSS:
+            if (lastTrippedSensor == SensorName.WESTUP) waitForAcquire(cross);
+            else releaseSemaphore(cross);
+            break;
+          case SOUTHCROSS:
+            if (lastTrippedSensor == SensorName.SOUTHUP) waitForAcquire(cross);
+            else releaseSemaphore(cross);
+            break;
+          case WESTUP:
+            if (lastTrippedSensor == SensorName.EASTCROSS) {
+              waitForAcquire(right);
+              tsim.setSwitch(17,7,2);
+            } else releaseSemaphore(right);
+            break;
+          case EASTUP:
+            if (lastTrippedSensor == SensorName.EASTRIGHT) tryToAcquire(up,17,7,1);
+            else if (lastTrippedSensor == SensorName.SOUTHUP) releaseSemaphore(up);
+            break;
+          case SOUTHUP:
+            if ( lastTrippedSensor == SensorName.SOUTHCROSS) {
+              waitForAcquire(right);
+              tsim.setSwitch(17,7,1);
+            } else releaseSemaphore(right);
+            break;
+          case WESTLEFT:
+            if (lastTrippedSensor == SensorName.WESTDOWN) tryToAcquire(mid,4,9,1);
+            else if (semaphores.contains(mid)) releaseSemaphore(mid);
+            break;
+          case EASTLEFT:
+            if (lastTrippedSensor == SensorName.WESTRIGHT) {
+              waitForAcquire(left);
+              tsim.setSwitch(4,9,1);
+            } else releaseSemaphore(left);
+            break;
+          case SOUTHLEFT:
+            if (lastTrippedSensor == SensorName.SOUTHRIGHT) {
+              waitForAcquire(left);
+              tsim.setSwitch(4,9,2);
+            } else releaseSemaphore(left);
+            break;
+          case WESTRIGHT:
+            if (lastTrippedSensor == SensorName.EASTLEFT) {
+              waitForAcquire(right);
+              tsim.setSwitch(15, 9, 2);
+            } else releaseSemaphore(right);
+            break;
+          case EASTRIGHT:
+            if (lastTrippedSensor == SensorName.EASTUP) tryToAcquire(mid,15,9,2);
+            else if (semaphores.contains(mid)) releaseSemaphore(mid);
+            break;
+          case SOUTHRIGHT:
+            if (lastTrippedSensor == SensorName.SOUTHLEFT) {
+              waitForAcquire(right);
+              tsim.setSwitch(15,9,1);
+            } else releaseSemaphore(right);
+            break;
+          case WESTDOWN:
+            if (lastTrippedSensor == SensorName.WESTLEFT) tryToAcquire(down,3,11,2);
+            else if (lastTrippedSensor == SensorName.SOUTHDOWN) releaseSemaphore(down);
+            break;
+          case EASTDOWN:
+            if (lastTrippedSensor == SensorName.SOUTHNORTHSTATION) {
+              waitForAcquire(left);
+              tsim.setSwitch(3,11,1);
+            } else releaseSemaphore(left);
+            break;
+          case SOUTHDOWN:
+            if (lastTrippedSensor == SensorName.SOUTHSOUTHSTATION) {
+              waitForAcquire(left);
+              tsim.setSwitch(3,11,2);
+            } else releaseSemaphore(left);
+            break;
+        }
+      }
+      lastTrippedSensor = sensorName;
+    }
+
     @Override
     public void run() {
       while (!this.isInterrupted()) {
        try {
          pollSensorEvent(tsim.getSensor(id));
-      } catch (InterruptedException e ) {
+      } catch (InterruptedException e) {
         e.printStackTrace();
       } catch (CommandException e) {
         e.printStackTrace();
