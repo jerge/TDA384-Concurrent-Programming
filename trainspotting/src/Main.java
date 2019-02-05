@@ -34,7 +34,7 @@ public class Main {
         Process p = Runtime.getRuntime().exec(tsimCommand);
         TSimInterface.init(p.getInputStream(), p.getOutputStream());
         TSimInterface.getInstance().setDebug(true);
-        new Lab1(train1_speed, train2_speed);
+        new Lab1(tsim_speed, train1_speed, train2_speed);
         // new Lab1Extra(train1_speed, train2_speed);
         p.waitFor();
     }

@@ -14,6 +14,8 @@ public class Lab1 {
   private Train train1;
   private Train train2;
 
+  private int simulatorSpeed;
+
   private Semaphore cross = new Semaphore(1);
   private Semaphore up = new Semaphore(1);
   private Semaphore left = new Semaphore(1);
@@ -23,10 +25,10 @@ public class Lab1 {
 
   private enum SensorName {
     // Station
-    NORTHNORTHSTATION,
+    /*NORTHNORTHSTATION,
     NORTHSOUTHSTATION,
     SOUTHNORTHSTATION,
-    SOUTHSOUTHSTATION,
+    SOUTHSOUTHSTATION,*/
     // Crossing
     NORTHCROSS,
     WESTCROSS,
@@ -34,7 +36,7 @@ public class Lab1 {
     SOUTHCROSS,
     // Up Semaphore
     WESTUP,
-    EASTUP,
+    //EASTUP,
     SOUTHUP,
     // Left Semaphore
     WESTLEFT,
@@ -45,7 +47,6 @@ public class Lab1 {
     EASTRIGHT,
     SOUTHRIGHT,
     // Down Semaphore
-    WESTDOWN,
     EASTDOWN,
     SOUTHDOWN
   }
@@ -53,7 +54,8 @@ public class Lab1 {
   // Position to sensor map
   private Map<Point2D,SensorName> posSensor = new HashMap<>();
 
-  public Lab1(int speed1, int speed2) {
+  public Lab1(int simulatorSpeed, int speed1, int speed2) {
+    this.simulatorSpeed = simulatorSpeed;
     TSimInterface tsi = TSimInterface.getInstance();
     train1 = new Train(1,tsi,speed1);
     train2 = new Train(2,tsi,speed2);
@@ -77,11 +79,11 @@ public class Lab1 {
   }
 
   private void init(){
-    posSensor.put(new Point2D(15,3), SensorName.NORTHNORTHSTATION);
+    /*posSensor.put(new Point2D(15,3), SensorName.NORTHNORTHSTATION);
     posSensor.put(new Point2D(15,5), SensorName.NORTHSOUTHSTATION);
 
     posSensor.put(new Point2D(15,11), SensorName.SOUTHNORTHSTATION);
-    posSensor.put(new Point2D(15,13), SensorName.SOUTHSOUTHSTATION);
+    posSensor.put(new Point2D(15,13), SensorName.SOUTHSOUTHSTATION);*/
 
     posSensor.put(new Point2D(9,5), SensorName.NORTHCROSS);
     posSensor.put(new Point2D(6,6), SensorName.WESTCROSS);
@@ -89,18 +91,17 @@ public class Lab1 {
     posSensor.put(new Point2D(10,8), SensorName.SOUTHCROSS);
 
     posSensor.put(new Point2D(14,7), SensorName.WESTUP);
-    posSensor.put(new Point2D(19,7), SensorName.EASTUP);
     posSensor.put(new Point2D(15,8), SensorName.SOUTHUP);
 
     posSensor.put(new Point2D(13,9), SensorName.WESTRIGHT);
-    posSensor.put(new Point2D(17,9), SensorName.EASTRIGHT);
+    posSensor.put(new Point2D(19,9), SensorName.EASTRIGHT);
     posSensor.put(new Point2D(13,10), SensorName.SOUTHRIGHT);
 
-    posSensor.put(new Point2D(2,9), SensorName.WESTLEFT);
+    posSensor.put(new Point2D(1,9), SensorName.WESTLEFT);
+
     posSensor.put(new Point2D(7,9), SensorName.EASTLEFT);
     posSensor.put(new Point2D(6,10), SensorName.SOUTHLEFT);
 
-    posSensor.put(new Point2D(1,10), SensorName.WESTDOWN);
     posSensor.put(new Point2D(6,11), SensorName.EASTDOWN);
     posSensor.put(new Point2D(4,13), SensorName.SOUTHDOWN);
 
@@ -126,19 +127,39 @@ public class Lab1 {
 
     }
 
+    /**
+     * Sets the speed of the train to the speed * direction
+     * @param spd the speed to set the train to
+     * @throws CommandException
+     */
     void setSpeed(int spd) throws CommandException{
       spd = min(maxSpeed, spd);
       this.speed = spd;
       tsim.setSpeed(id, speed*direction);
     }
 
-    void stopAtStation() throws InterruptedException, CommandException{
+    /**
+     * Stops the train in 200 (arbitrary constant)*railTracks/speed*simulatorSpeed milliseconds,
+     * waits for 1000+(20*speed) amount of milliseconds. Then changes the direction
+     * and sets the speed to the maxSpeed
+     * @param railTracks the amount of railTracks until the train shall turn
+     * @throws InterruptedException
+     * @throws CommandException
+     */
+    void stopAtStation(int railTracks) throws InterruptedException, CommandException{
+      sleep(200*railTracks/speed*simulatorSpeed);
       setSpeed(0);
-      sleep(1000 + (20 * speed));
+      sleep(1000 + (20 * speed)*simulatorSpeed);
       direction *= (-1);
       setSpeed(maxSpeed);
     }
 
+    /**
+     * Tries to acquire the semaphore and stops and waits until it can acquire it if it failed
+     * @param semaphore the Semaphore to be acquired
+     * @throws InterruptedException
+     * @throws CommandException
+     */
     void waitForAcquire(Semaphore semaphore) throws InterruptedException, CommandException {
       if (!semaphore.tryAcquire()){
         setSpeed(0);
@@ -148,11 +169,24 @@ public class Lab1 {
       }
     }
 
+    /**
+     * Releases the specified semaphore and removes it from the train's @sempahores list
+     * @param semaphore the Semaphore to be released
+     */
     void releaseSemaphore(Semaphore semaphore) {
       semaphore.release();
       semaphores.remove(semaphore);
     }
 
+    /**
+     * Tries to acquire the Semaphore and sets the switch at the location to the specified direction
+     * or if it fails to acquire, it sets the switch to the opposite of the specified direction
+     * @param semaphore the Semaphore to be tried to acquire
+     * @param x the x position of the switch
+     * @param y the y position of the switch
+     * @param dir the direction the train should set the switch if it acquires the semaphore
+     * @throws CommandException
+     */
     void tryToAcquire(Semaphore semaphore, int x, int y, int dir) throws CommandException{
       if (semaphore.tryAcquire()) {
         semaphores.add(semaphore);
@@ -182,19 +216,24 @@ public class Lab1 {
           //  sensor and activate it multiple times
           // In some cases you have to wait in order to acquire,
           //  other times you have to switch direction
-          case NORTHNORTHSTATION:
+          /*case NORTHNORTHSTATION:
           case NORTHSOUTHSTATION:
           case SOUTHNORTHSTATION:
           case SOUTHSOUTHSTATION:
-            stopAtStation();
-            break;
+            break;*/
           case NORTHCROSS:
-            if (lastTrippedSensor == SensorName.NORTHSOUTHSTATION) waitForAcquire(cross);
-            else releaseSemaphore(cross);
+            if (lastTrippedSensor == SensorName.SOUTHCROSS){
+              releaseSemaphore(cross);
+              stopAtStation(6);
+            }
+            else waitForAcquire(cross);
             break;
           case WESTCROSS:
-            if (lastTrippedSensor == SensorName.NORTHNORTHSTATION) waitForAcquire(cross);
-            else releaseSemaphore(cross);
+            if (lastTrippedSensor == SensorName.EASTCROSS) {
+              releaseSemaphore(cross);
+              stopAtStation(12);
+            }
+            else waitForAcquire(cross);
             break;
           case EASTCROSS:
             if (lastTrippedSensor == SensorName.WESTUP) waitForAcquire(cross);
@@ -210,10 +249,6 @@ public class Lab1 {
               tsim.setSwitch(17,7,2);
             } else releaseSemaphore(right);
             break;
-          case EASTUP:
-            if (lastTrippedSensor == SensorName.EASTRIGHT) tryToAcquire(up,17,7,1);
-            else if (lastTrippedSensor == SensorName.SOUTHUP) releaseSemaphore(up);
-            break;
           case SOUTHUP:
             if ( lastTrippedSensor == SensorName.SOUTHCROSS) {
               waitForAcquire(right);
@@ -221,8 +256,11 @@ public class Lab1 {
             } else releaseSemaphore(right);
             break;
           case WESTLEFT:
-            if (lastTrippedSensor == SensorName.WESTDOWN) tryToAcquire(mid,4,9,1);
-            else if (semaphores.contains(mid)) releaseSemaphore(mid);
+            if (lastTrippedSensor == SensorName.SOUTHDOWN) releaseSemaphore(down);
+            else if (lastTrippedSensor != SensorName.EASTDOWN) tryToAcquire(down,3,11,2);
+
+            if (semaphores.contains(mid)) releaseSemaphore(mid);
+            else if (lastTrippedSensor != SensorName.SOUTHLEFT) tryToAcquire(mid,4,9,1);
             break;
           case EASTLEFT:
             if (lastTrippedSensor == SensorName.WESTRIGHT) {
@@ -243,8 +281,11 @@ public class Lab1 {
             } else releaseSemaphore(right);
             break;
           case EASTRIGHT:
-            if (lastTrippedSensor == SensorName.EASTUP) tryToAcquire(mid,15,9,2);
-            else if (semaphores.contains(mid)) releaseSemaphore(mid);
+            if (lastTrippedSensor == SensorName.SOUTHUP) releaseSemaphore(up);
+            else if (lastTrippedSensor != SensorName.WESTUP) tryToAcquire(up,17,7,1);
+
+            if (semaphores.contains(mid)) releaseSemaphore(mid);
+            else if (lastTrippedSensor != SensorName.SOUTHRIGHT) tryToAcquire(mid,15,9,2);
             break;
           case SOUTHRIGHT:
             if (lastTrippedSensor == SensorName.SOUTHLEFT) {
@@ -252,21 +293,23 @@ public class Lab1 {
               tsim.setSwitch(15,9,1);
             } else releaseSemaphore(right);
             break;
-          case WESTDOWN:
-            if (lastTrippedSensor == SensorName.WESTLEFT) tryToAcquire(down,3,11,2);
-            else if (lastTrippedSensor == SensorName.SOUTHDOWN) releaseSemaphore(down);
-            break;
           case EASTDOWN:
-            if (lastTrippedSensor == SensorName.SOUTHNORTHSTATION) {
+            if (lastTrippedSensor == SensorName.WESTLEFT) {
+              releaseSemaphore(left);
+              stopAtStation(9);
+            } else {
               waitForAcquire(left);
               tsim.setSwitch(3,11,1);
-            } else releaseSemaphore(left);
+            }
             break;
           case SOUTHDOWN:
-            if (lastTrippedSensor == SensorName.SOUTHSOUTHSTATION) {
+            if (lastTrippedSensor == SensorName.WESTLEFT) {
+              releaseSemaphore(left);
+              stopAtStation(11);
+            } else {
               waitForAcquire(left);
-              tsim.setSwitch(3,11,2);
-            } else releaseSemaphore(left);
+              tsim.setSwitch(3, 11, 2);
+            }
             break;
         }
       }
