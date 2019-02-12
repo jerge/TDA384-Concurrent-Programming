@@ -64,8 +64,6 @@ public class Lab1 {
       train1.setSpeed(speed1);
       train2.setSpeed(speed2);
 
-      tsi.setSwitch(4,9,1);
-      tsi.setSwitch(15,9,2);
       init();
     }
     catch (CommandException e) {
@@ -78,6 +76,9 @@ public class Lab1 {
 
   }
 
+  /**
+   * Initializes the HashMap that couples the SensorName to a location
+   */
   private void init(){
     /*posSensor.put(new Point2D(15,3), SensorName.NORTHNORTHSTATION);
     posSensor.put(new Point2D(15,5), SensorName.NORTHSOUTHSTATION);
@@ -98,7 +99,6 @@ public class Lab1 {
     posSensor.put(new Point2D(13,10), SensorName.SOUTHRIGHT);
 
     posSensor.put(new Point2D(1,9), SensorName.WESTLEFT);
-
     posSensor.put(new Point2D(7,9), SensorName.EASTLEFT);
     posSensor.put(new Point2D(6,10), SensorName.SOUTHLEFT);
 
@@ -117,6 +117,7 @@ public class Lab1 {
 
     // Saves the last activated sensor to know which direction you came from
     private SensorName lastTrippedSensor = null;
+
     // Saves semaphores to make sure you only release if you own the semaphore
     private List<Semaphore> semaphores = new ArrayList<>(2);
 
@@ -124,7 +125,6 @@ public class Lab1 {
       this.id = id;
       this.tsim = tsim;
       this.maxSpeed = maxSpeed;
-
     }
 
     /**
@@ -212,8 +212,7 @@ public class Lab1 {
       if (sensor.getStatus() == SensorEvent.ACTIVE) { // Only do action when you activate a sensor
         switch (sensorName) {                         // Depending on the sensor, do different stuff
           // At Semaphores make sure you: Acquire the semaphore to pass, or release it if you have passed
-          // At stations stop and turn around. Due to max speed <= 15 the train will not pass the
-          //  sensor and activate it multiple times
+          // At stations stop in a few seconds (depending on the steps and speed) and turn around.
           // In some cases you have to wait in order to acquire,
           //  other times you have to switch direction
           /*case NORTHNORTHSTATION:
