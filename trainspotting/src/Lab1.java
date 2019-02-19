@@ -1,6 +1,7 @@
 import TSim.*;
-import javafx.geometry.Point2D;
 
+
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -51,6 +52,7 @@ public class Lab1 {
     SOUTHDOWN
   }
 
+
   // Position to sensor map
   private Map<Point2D,SensorName> posSensor = new HashMap<>();
 
@@ -86,24 +88,24 @@ public class Lab1 {
     posSensor.put(new Point2D(15,11), SensorName.SOUTHNORTHSTATION);
     posSensor.put(new Point2D(15,13), SensorName.SOUTHSOUTHSTATION);*/
 
-    posSensor.put(new Point2D(9,5), SensorName.NORTHCROSS);
-    posSensor.put(new Point2D(6,6), SensorName.WESTCROSS);
-    posSensor.put(new Point2D(11,7), SensorName.EASTCROSS);
-    posSensor.put(new Point2D(10,8), SensorName.SOUTHCROSS);
+    posSensor.put(new Point2D.Double(9,5), SensorName.NORTHCROSS);
+    posSensor.put(new Point2D.Double(6,6), SensorName.WESTCROSS);
+    posSensor.put(new Point2D.Double(11,7), SensorName.EASTCROSS);
+    posSensor.put(new Point2D.Double(10,8), SensorName.SOUTHCROSS);
 
-    posSensor.put(new Point2D(14,7), SensorName.WESTUP);
-    posSensor.put(new Point2D(15,8), SensorName.SOUTHUP);
+    posSensor.put(new Point2D.Double(14,7), SensorName.WESTUP);
+    posSensor.put(new Point2D.Double(15,8), SensorName.SOUTHUP);
 
-    posSensor.put(new Point2D(13,9), SensorName.WESTRIGHT);
-    posSensor.put(new Point2D(19,9), SensorName.EASTRIGHT);
-    posSensor.put(new Point2D(13,10), SensorName.SOUTHRIGHT);
+    posSensor.put(new Point2D.Double(13,9), SensorName.WESTRIGHT);
+    posSensor.put(new Point2D.Double(19,9), SensorName.EASTRIGHT);
+    posSensor.put(new Point2D.Double(13,10), SensorName.SOUTHRIGHT);
 
-    posSensor.put(new Point2D(1,9), SensorName.WESTLEFT);
-    posSensor.put(new Point2D(7,9), SensorName.EASTLEFT);
-    posSensor.put(new Point2D(6,10), SensorName.SOUTHLEFT);
+    posSensor.put(new Point2D.Double(1,9), SensorName.WESTLEFT);
+    posSensor.put(new Point2D.Double(7,9), SensorName.EASTLEFT);
+    posSensor.put(new Point2D.Double(6,10), SensorName.SOUTHLEFT);
 
-    posSensor.put(new Point2D(6,11), SensorName.EASTDOWN);
-    posSensor.put(new Point2D(4,13), SensorName.SOUTHDOWN);
+    posSensor.put(new Point2D.Double(6,11), SensorName.EASTDOWN);
+    posSensor.put(new Point2D.Double(4,13), SensorName.SOUTHDOWN);
 
   }
 
@@ -208,7 +210,7 @@ public class Lab1 {
      * @throws CommandException
      */
     synchronized void pollSensorEvent(SensorEvent sensor) throws InterruptedException, CommandException{
-      SensorName sensorName = posSensor.get((new Point2D(sensor.getXpos(),sensor.getYpos())));
+      SensorName sensorName = posSensor.get((new Point2D.Double(sensor.getXpos(),sensor.getYpos())));
       if (sensor.getStatus() == SensorEvent.ACTIVE) { // Only do action when you activate a sensor
         switch (sensorName) {                         // Depending on the sensor, do different stuff
           // At Semaphores make sure you: Acquire the semaphore to pass, or release it if you have passed
