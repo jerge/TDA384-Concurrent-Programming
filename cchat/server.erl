@@ -2,8 +2,14 @@
 -export([start/1,stop/1]).
 
 -record(server_state, {
-    users = [], % All users in the server
+    users = [], % All users in the server TODO Do we need this?
     channels = #{} % All channels mapped to the users in the channel
+}).
+
+-record(client_st, {
+    gui, % atom of the GUI process
+    nick, % nick/username of the client
+    server % atom of the chat server
 }).
 
 -record(user, {
@@ -32,23 +38,67 @@ stop(ServerAtom) ->
 
 loop(ServerAtom, State) ->
     receive 
-        %NewChannels = State#server_state.channels,
-        %NewUsers = State#server_state.users,
-        % Join
-        {From, GPid, Channel, Nick} ->
+        % Pattern match the Join command
+        {From, GPid, Channel, Nick, join} ->
             Channels = State#server_state.channels,
             Users = State#server_state.users,
+            User = #user{pid = GPid, nick = Nick},
             case maps:is_key(Channel,Channels) of 
                 false -> 
-                    NewChannels = maps:put(Channel,[#user{pid = GPid, nick = Nick}],Channels),
+                    NewChannels = maps:put(Channel,[User],Channels),
                     From ! {true},
                     loop(ServerAtom,#server_state{users = Users, channels = NewChannels});
                 true ->
-                    loop(ServerAtom,#server_state{users = Users, channels = Channels})
-                end
-            %loop(ServerAtom,#server_state{users = State#server_state.users, channels = Channels});
-            %loop(ServerAtom,State)
-        %stop -> 
-        %    true
-        end.
+                    UsersInChannel = maps:get(Channel,Channels),
+                    InChannel = lists:member(User,UsersInChannel),
+                    if 
+                        InChannel ->
+                            From ! {false};
+                            %loop(ServerAtom,State);
+                        true ->
+                            NewChannels = maps:put(Channel,[User]++UsersInChannel,Channels),
+                            From ! {true},
+                            loop(ServerAtom,#server_state{users = Users, channels = NewChannels})
+                    end
+
+
+                    %loop(ServerAtom,#server_state{users = Users, channels = Channels})
+            end;
+
+        % Pattern math the Leave command
+        {From, GPid, Channel, Nick, leave} ->
+            Channels = State#server_state.channels,
+            Users = State#server_state.users,
+            User = #user{pid = GPid, nick = Nick},
+            UsersInChannel = maps:get(Channel,Channels),
+            InChannel = lists:member(User,UsersInChannel),
+            if
+                InChannel ->
+                    From ! {true},
+                    NewChannels = maps:put(Channel,lists:delete(User,UsersInChannel),Channels),
+                    loop(ServerAtom,#server_state{users = Users, channels = NewChannels});
+                true ->
+                    From ! {false},
+                    loop(ServerAtom,State)
+
+            end;
+
+        {From, GPid, Channel, Nick, Msg, message_send} ->
+            Channels = State#server_state.channels,
+            User = #user{pid = GPid, nick = Nick},
+            UsersInChannel = maps:get(Channel,Channels),
+            InChannel = lists:member(User,UsersInChannel),
+            %io:fwrite(length(UsersInChannel)),
+            if
+                InChannel ->
+                    lists:map(
+                        (fun (Receiver) -> client:handle(#client_st{gui = Receiver#user.pid}, {message_recieve, Channel, Receiver#user.nick, Msg}) end),
+                        UsersInChannel),
+                    From ! {true};
+                true ->
+                    From ! {false}
+            end,
+            loop(ServerAtom,State)
+
+    end.
 

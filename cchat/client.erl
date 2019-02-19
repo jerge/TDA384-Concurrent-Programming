@@ -29,9 +29,17 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 % Join channel
 handle(St, {join, Channel}) ->
     % TODO: Implement this function
-    {reply, ok, St} ;
+    %{reply, ok, St} ;
     %{reply, {error, not_implemented, "join not implemented"}, St} ;
-    %ServerAtom ! {self(), GuiPid, Channel, Nick}
+    {_, GPid, Nick, ServerAtom} = St,
+    ServerAtom ! {self(), GPid, Channel, Nick, join},
+    receive
+        {Finished} ->
+            if
+                Finished /= true -> {reply, {error, user_already_joined, "User has already joined the channel"}, St};
+                true ->             {reply, ok, St}
+            end
+    end;
 
     
 
@@ -39,13 +47,31 @@ handle(St, {join, Channel}) ->
 handle(St, {leave, Channel}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
-    {reply, {error, not_implemented, "leave not implemented"}, St} ;
+    {_, GPid, Nick, ServerAtom} = St,
+    ServerAtom ! {self(), GPid, Channel, Nick, leave},
+    receive
+        {Finished} ->
+            if
+                Finished /= true -> {reply, {error, user_not_joined, "User has not joined the channel"}, St};
+                true ->             {reply, ok, St}
+            end
+    end;
+    %{reply, {error, not_implemented, "leave not implemented"}, St} ;
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
-    {reply, {error, not_implemented, "message sending not implemented"}, St} ;
+    {_, GPid, Nick, ServerAtom} = St,
+    ServerAtom ! {self(), GPid, Channel, Nick, Msg, message_send},
+    receive
+        {Finished} ->
+            if
+                Finished /= true -> {reply, {error, user_not_joined, "User has not joined the channel"}, St};
+                true ->             {reply, ok, St}
+            end
+    end;
+    %{reply, {error, not_implemented, "message sending not implemented"}, St} ;
 
 % ---------------------------------------------------------------------------
 % The cases below do not need to be changed...
