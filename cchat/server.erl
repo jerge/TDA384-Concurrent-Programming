@@ -29,7 +29,7 @@ stop(ServerAtom) ->
   % TODO Implement function
   % Return ok
   % :request to stop_channels and :stop the genserver
-  not_implemented.
+  genserver:stop(ServerAtom).
 
 %State is the list of all Channels
 % 2 cases. Either you want to join channels or you want to stop everything
@@ -80,7 +80,7 @@ cases(ChannelState, Command) ->
       % If in channel :reply with fail otherwise
       % Append Client to the Members list and :reply with success
       case lists:member(Client, ChannelState#channel_st.members) of
-        true -> {reply, user_already_joined, ChannelState};
+        true -> {reply, {error, user_already_joined, "The user has already joined"}, ChannelState};
         false ->
           {reply, joined, ChannelState#channel_st{members = [Client | ChannelState#channel_st.members]}}
       end;

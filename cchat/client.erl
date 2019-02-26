@@ -36,11 +36,12 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 handle(St, {join, Channel}) ->
   Result = (catch genserver:request(St#client_st.server, {join, Channel, self()})),
   case Result of
-    {'EXIT',_} ->
-      {reply, {error,server_not_reached,"No resp from server"},St};
+
     joined -> {reply, ok, St};
     error ->
-      {reply, {error, user_already_joined, "The user has already joined"},St}
+      {reply, {error, user_already_joined, "The user has already joined"},St};
+    {'EXIT',_} ->
+      {reply, {error,server_not_reached,"No resp from server"},St}
     %_ -> io:fwrite(Result),{reply,ok,st}
 
   end;
