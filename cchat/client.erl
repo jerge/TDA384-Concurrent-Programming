@@ -6,7 +6,13 @@
 -record(client_st, {
   gui, % atom of the GUI process
   nick, % nick/username of the client
-  server % atom of the chat server
+  server, % atom of the chat server
+  channels
+}).
+
+-record(channel_st, {
+  name, % Channelname
+  members
 }).
 
 % Return an initial state record. This is called from GUI.
@@ -28,19 +34,15 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 
 % Join channel
 handle(St, {join, Channel}) ->
-  case lists:member(St#client_st.server, registered()) of
-    true ->
-      Result = (catch genserver:request(St#client_st.server, {join, Channel, self()})),
-      {_, GPid, Nick, ServerAtom, Channels} = St,
-      case Result of
-        joined -> {reply, ok, {self(), GPid, Nick, ServerAtom, [Channel | Channels]}};
-        user_already_joined ->
-          {reply, user_already_joined, {self(), GPid, Nick, ServerAtom, Channels}}
-        %_ -> io:fwrite(Result),{reply,ok,st}
+  Result = (catch genserver:request(St#client_st.server, {join, Channel, self()})),
+  case Result of
+    {'EXIT',_} ->
+      {reply, {error,server_not_reached,"No resp from server"},St};
+    joined -> {reply, ok, St};
+    error ->
+      {reply, {error, user_already_joined, "The user has already joined"},St}
+    %_ -> io:fwrite(Result),{reply,ok,st}
 
-      end;
-    false ->
-      {reply, server_not_available, St}
   end;
 %{reply, {error, not_implemented, "message sending not implemented"}, St} ;
 
@@ -49,11 +51,12 @@ handle(St, {join, Channel}) ->
 handle(St, {leave, Channel}) ->
 %    % TODO: Implement this function
       Result = (catch genserver:request(list_to_atom(Channel), {leave, self()})),
-      {_, GPid, Nick, ServerAtom, Channels} = St,
       case Result of
-        left -> {reply, ok, {self(), GPid, Nick, ServerAtom, lists:delete(Channel,Channels)}};
-        user_not_joined ->
-          {reply, user_not_joined, {self(), GPid, Nick, ServerAtom, Channels}}
+        {'EXIT',_} ->
+          {reply, {error,server_not_reached,"No respons from server"},St};
+        left -> {reply, ok, St};
+        error ->
+          {reply, {error, user_not_joined, "The user has not joined the channel"},St}
         %_ -> io:fwrite(Result),{reply,ok,st}
 
       end;
@@ -74,7 +77,7 @@ handle(St, {leave, Channel}) ->
 handle(St, {message_send, Channel, Msg}) ->
   case catch genserver:request(list_to_atom(Channel), {message_send, St#client_st.nick, Msg, self()}) of
     {'EXIT', _} ->
-      {reply, {error, server_not_reached, "No response from server."}, St};
+      {reply, {error, server_not_reached, "No respon from server."}, St};
     message_send ->
       {reply, ok, St};
     error ->
