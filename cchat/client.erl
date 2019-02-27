@@ -53,12 +53,12 @@ handle(St, {leave, Channel}) ->
 %    % TODO: Implement this function
       Result = (catch genserver:request(list_to_atom(Channel), {leave, self()})),
       case Result of
-        {'EXIT',_} ->
-          {reply, {error,server_not_reached,"No respons from server"},St};
         left -> {reply, ok, St};
         error ->
-          {reply, {error, user_not_joined, "The user has not joined the channel"},St}
-        %_ -> io:fwrite(Result),{reply,ok,st}
+          {reply, {error, user_not_joined, "The user has not joined the channel"},St};
+        {'EXIT',_} ->
+          {reply, {error,server_not_reached,"No respons from server"},St}
+
 
       end;
 
@@ -77,12 +77,12 @@ handle(St, {leave, Channel}) ->
 %  end;
 handle(St, {message_send, Channel, Msg}) ->
   case catch genserver:request(list_to_atom(Channel), {message_send, St#client_st.nick, Msg, self()}) of
-    {'EXIT', _} ->
-      {reply, {error, server_not_reached, "No respon from server."}, St};
     message_send ->
       {reply, ok, St};
     error ->
-      {reply, {error, user_not_joined, "User has not joined this channel"}, St}
+      {reply, {error, user_not_joined, "User has not joined this channel"}, St};
+    {'EXIT', _} ->
+      {reply, {error, server_not_reached, "No respon from server."}, St}
   end;
 
 % ---------------------------------------------------------------------------
@@ -95,11 +95,14 @@ handle(St, whoami) ->
 
 % Change nick (no check, local only)
 handle(St, {nick, NewNick}) ->
-  {reply, ok, St#client_st{nick = NewNick}};
+  case catch genserver:request(St#client_st.server, {change_nick, NewNick}) of
+    changed -> {reply, ok, St#client_st{nick = NewNick}};
+    error -> {reply, {error,nick_taken, "The nick has already been taken"},St}
+  end;
+
 
 % Incoming message (from channel, to GUI)
 handle(St = #client_st{gui = GUI}, {message_receive, Channel, Nick, Msg}) ->
-  io:fwrite("skriver"),
   gen_server:call(GUI, {message_receive, Channel, Nick ++ "> " ++ Msg}),
   {reply, ok, St};
 
