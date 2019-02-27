@@ -63,10 +63,10 @@ handle(ServerState, Command) ->
           {reply, error, ServerState}
       end;
 
-    {change_nick, NewNick} ->
+    {change_nick, NewNick, OldNick} ->
       case lists:member(NewNick, ServerState#server_st.nicknames) of
         true -> {reply, error, ServerState};
-        false -> {reply, changed, ServerState#server_st{nicknames = [NewNick | ServerState#server_st.nicknames]}}
+        false -> {reply, changed, ServerState#server_st{nicknames = [NewNick | lists:delete(OldNick, ServerState#server_st.nicknames)]}}
       end
 
 

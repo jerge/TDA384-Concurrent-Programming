@@ -95,7 +95,7 @@ handle(St, whoami) ->
 
 % Change nick (no check, local only)
 handle(St, {nick, NewNick}) ->
-  case catch genserver:request(St#client_st.server, {change_nick, NewNick}) of
+  case catch genserver:request(St#client_st.server, {change_nick, NewNick, St#client_st.nick}) of
     changed -> {reply, ok, St#client_st{nick = NewNick}};
     error -> {reply, {error,nick_taken, "The nick has already been taken"},St}
   end;
