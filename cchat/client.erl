@@ -45,12 +45,10 @@ handle(St, {join, Channel}) ->
       {reply, {error,server_not_reached,"No resp from server"},St}
 
   end;
-%{reply, {error, not_implemented, "message sending not implemented"}, St} ;
 
 
 % Leave channel
 handle(St, {leave, Channel}) ->
-%    % TODO: Implement this function
       Result = (catch genserver:request(list_to_atom(Channel), {leave, self()})),
       case Result of
         left -> {reply, ok, St};

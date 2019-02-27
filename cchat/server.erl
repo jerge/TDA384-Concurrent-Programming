@@ -22,7 +22,7 @@
 % Do not change the signature of this function.
 start(ServerAtom) ->
   % - Spawn a new process which waits for a message, handles it, then loops infinitely
-  genserver:start(ServerAtom, #server_st{channels = [],nicknames = []}, fun handle/2).
+  genserver:start(ServerAtom, #server_st{channels = [], nicknames = []}, fun handle/2).
 
 
 % Stop the server process registered to the given name,
@@ -37,10 +37,11 @@ stop(ServerAtom) ->
   % genserver:request(ServerAtom, stop_channels),
   genserver:stop(ServerAtom).
 
-% State is the list of all Channels
-% 2 cases. Either you want to join channels or you want to stop everything
+% State is the list of all Channels and all taken nicknames
 handle(ServerState, Command) ->
   case Command of
+    % If the channel doesn't exist, :start it and initialize it with the Client that tried to join and the cases function
+    % Otherwise :request the Channel to join
     {join, Ch, Client} ->
       case lists:member(Ch, ServerState#server_st.channels) of
         true ->
@@ -54,6 +55,8 @@ handle(ServerState, Command) ->
           {reply, joined, ServerState#server_st{channels = [Ch | ServerState#server_st.channels]}}
       end;
 
+    % If the channel doesn't exist, reply with error
+    % Otherwise :request to leave the channel
     {leave, Ch, Client} ->
       case lists:member(Ch, ServerState#server_st.channels) of
         true ->
@@ -66,15 +69,19 @@ handle(ServerState, Command) ->
           {reply, error, ServerState}
       end;
 
+    % If the nickname is already taken, reply with error
+    % Otherwise update the ServerState to contain the NewNick and remove the old nick
     {change_nick, NewNick, OldNick} ->
       case lists:member(NewNick, ServerState#server_st.nicknames) of
         true -> {reply, error, ServerState};
-        false -> {reply, changed, ServerState#server_st{nicknames = [NewNick | lists:delete(OldNick, ServerState#server_st.nicknames)]}}
+        false ->
+          {reply, changed, ServerState#server_st{nicknames = [NewNick | lists:delete(OldNick, ServerState#server_st.nicknames)]}}
       end;
 
+    % :stop all channels
     {stop_channels} ->
-      lists:foreach(fun (channel) -> genserver:stop(channel) end, ServerState#server_st.channels),
-      {reply,ok,ServerState#server_st{channels = []}}
+      lists:foreach(fun(channel) -> genserver:stop(channel) end, ServerState#server_st.channels),
+      {reply, ok, ServerState#server_st{channels = []}}
 
 
   end.
@@ -114,7 +121,7 @@ cases(ChannelState, Command) ->
     % Pattern match the Message_send command
     {message_send, Nick, Msg, Pid} ->
       % If the Sender is not in the channel :reply with fail
-      % Otherwise :request a message_receive to all clients, % Can be threaded
+      % Otherwise :request a message_receive to all clients, can be threaded
       case lists:member(Pid, ChannelState#channel_st.members) of
         true ->
           spawn(fun() ->
