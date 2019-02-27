@@ -14,7 +14,7 @@
 
 -record(channel_st, {
   name, % Channelname
-  members
+  members % Clients in the channel
 }).
 
 
@@ -32,6 +32,7 @@ stop(ServerAtom) ->
   % TODO Implement function
   % Return ok
   % :request to stop_channels and :stop the genserver
+  genserver:request(ServerAtom, stop_channels),
   genserver:stop(ServerAtom).
 
 % State is the list of all Channels
@@ -67,7 +68,11 @@ handle(ServerState, Command) ->
       case lists:member(NewNick, ServerState#server_st.nicknames) of
         true -> {reply, error, ServerState};
         false -> {reply, changed, ServerState#server_st{nicknames = [NewNick | lists:delete(OldNick, ServerState#server_st.nicknames)]}}
-      end
+      end;
+
+    {stop_channels} ->
+      lists:foreach(fun (channel) -> genserver:stop(channel) end, ServerState#server_st.channels),
+      {reply,ok,ServerState#server_st{channels = []}}
 
 
   end.

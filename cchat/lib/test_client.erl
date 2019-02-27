@@ -449,7 +449,7 @@ change_nick_combined_test() ->
 % Joining when no server
 join_no_server_test() ->
     init("join_no_server"),
-    server_stop(),
+    server_kill(),
 
     putStrLn("Wait a few seconds for timeout..."),
     {_Pid, _Nick, ClientAtom} = new_client(),
