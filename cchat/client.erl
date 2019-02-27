@@ -19,7 +19,6 @@
 % Do not change the signature of this function.
 initial_state(Nick, GUIAtom, ServerAtom) ->
   catch genserver:request(ServerAtom,{change_nick,Nick,Nick}),
-  %case Result of
   #client_st{
     gui = GUIAtom,
     nick = Nick,
@@ -44,7 +43,6 @@ handle(St, {join, Channel}) ->
       {reply, {error, user_already_joined, "The user has already joined"},St};
     {'EXIT',_} ->
       {reply, {error,server_not_reached,"No resp from server"},St}
-    %_ -> io:fwrite(Result),{reply,ok,st}
 
   end;
 %{reply, {error, not_implemented, "message sending not implemented"}, St} ;
@@ -65,18 +63,6 @@ handle(St, {leave, Channel}) ->
       end;
 
 % Sending message (from GUI, to channel)
-%handle(St, {message_send, Channel, Msg}) ->
-%  % TODO: Implement this function
-%  % {reply, ok, St} ;
-%  {_, GPid, Nick, ServerAtom, Channels} = St,
-%  Result = (catch genserver:request(list_to_atom(Channel), {message_send, self(),Nick,Msg})),
-%  case Result of
-%    sent -> {reply, ok, St};
-%    user_not_joined ->
-%      {reply, user_not_joined, {self(), GPid, Nick, ServerAtom, Channels}}
-%    %_ -> io:fwrite(Result),{reply,ok,st}
-%
-%  end;
 handle(St, {message_send, Channel, Msg}) ->
   case catch genserver:request(list_to_atom(Channel), {message_send, St#client_st.nick, Msg, self()}) of
     message_send ->

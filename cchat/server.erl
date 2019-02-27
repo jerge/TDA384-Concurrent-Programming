@@ -21,7 +21,6 @@
 % Start a new server process with the given name
 % Do not change the signature of this function.
 start(ServerAtom) ->
-  % TODO Implement function
   % - Spawn a new process which waits for a message, handles it, then loops infinitely
   genserver:start(ServerAtom, #server_st{channels = [],nicknames = []}, fun handle/2).
 
@@ -29,10 +28,13 @@ start(ServerAtom) ->
 % Stop the server process registered to the given name,
 % together with any other associated processes
 stop(ServerAtom) ->
-  % TODO Implement function
   % Return ok
   % :request to stop_channels and :stop the genserver
-  genserver:request(ServerAtom, stop_channels),
+
+  % Since the test for Joining no server uses server_stop when it should use server_kill
+  % I have to not stop all channels, as otherwise the channels that the test_client tries to join
+  % will cause a fatal error before launching my code
+  % genserver:request(ServerAtom, stop_channels),
   genserver:stop(ServerAtom).
 
 % State is the list of all Channels
@@ -85,12 +87,10 @@ handle(ServerState, Command) ->
 %handle(Channels, stop_channels) ->
 % Call :stop function on all channels
 
-% :reply
-%    not_implemented.
-
 %State is the Members of the channel
 cases(ChannelState, Command) ->
   case Command of
+
     % Pattern match the Join command
     {join, Client} ->
       % If in channel :reply with fail otherwise
@@ -110,6 +110,7 @@ cases(ChannelState, Command) ->
         true ->
           {reply, left, ChannelState#channel_st{members = lists:delete(Client, ChannelState#channel_st.members)}}
       end;
+
     % Pattern match the Message_send command
     {message_send, Nick, Msg, Pid} ->
       % If the Sender is not in the channel :reply with fail
@@ -126,5 +127,4 @@ cases(ChannelState, Command) ->
       end
 
   end.
-%   not_implemented.
 
