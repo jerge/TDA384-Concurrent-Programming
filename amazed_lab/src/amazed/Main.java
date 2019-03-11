@@ -21,7 +21,7 @@ public class Main
     }
 
     private final static String SEQUENTIAL = "sequential";
-    private final static String PARALLEL = "para llel";
+    private final static String PARALLEL = "parallel";
 
     private static String map;
     private static boolean sequential = true;
