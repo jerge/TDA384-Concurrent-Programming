@@ -50,6 +50,8 @@ public class SequentialSolver
         this.start = maze.start();
         initStructures();
     }
+    public SequentialSolver(){}
+
 
     /**
      * Initializes <code>visited</code>, <code>predecessor</code>, and
