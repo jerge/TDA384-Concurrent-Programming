@@ -1,6 +1,6 @@
 JAVAC = javac
 JAVA = java
-MAIN_CP = src/main
+MAIN_CP = src/
 MAIN_SOURCEPATH = $(MAIN_CP)/amazed
 MAZE_SOURCEPATH = $(MAIN_SOURCEPATH)/maze
 SOLVER_SOURCEPATH = $(MAIN_SOURCEPATH)/solver
