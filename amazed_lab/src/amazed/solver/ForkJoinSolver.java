@@ -4,6 +4,7 @@ import amazed.maze.Maze;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * <code>ForkJoinSolver</code> implements a solver for
@@ -35,6 +36,8 @@ public class ForkJoinSolver
     }
 
     static protected ConcurrentSkipListSet<Integer> visited = new ConcurrentSkipListSet<>();
+    static AtomicBoolean goalFound = new AtomicBoolean(false);
+    private List<ForkJoinSolver> children = new ArrayList<>();
 
 
     /**
@@ -74,23 +77,24 @@ public class ForkJoinSolver
         int player = maze.newPlayer(start);
         // start with start node
         frontier.push(start);
+
         // as long as not all nodes have been processed
-        while (!frontier.empty()) {
+        while (!frontier.empty() && !goalFound.get()) {
             // get the new node to process
             int current = frontier.pop();
+            // move player to current node
+            if (current != start) {
+                maze.move(player, current);
+            }
             // if current node has a goal
             if (maze.hasGoal(current)) {
-                // move player to goal
-                maze.move(player, current);
                 System.out.println("I won");
+                goalFound.set(true);
                 // search finished: reconstruct and return path
-                this.join();
-                return pathFromTo(start, current);
+                return pathFromTo(start,current);
             }
             // if current node has not been visited yet
             if (!ForkJoinSolver.visited.contains(current)) {
-                // move player to current node
-                maze.move(player, current);
                 // mark node as visited
                 ForkJoinSolver.visited.add(current);
                 // for every node nb adjacent to current
@@ -98,7 +102,6 @@ public class ForkJoinSolver
                 int nbs = (maze.neighbors(current)).size() - fakenbs;
                 System.out.println(nbs);
                 for (int nb : maze.neighbors(current)) {
-                    //new ForkJoinSolver()
 
                     // add nb to the nodes to be processed
 
@@ -109,6 +112,7 @@ public class ForkJoinSolver
                         if (nbs > 1) {
                             System.out.println("forked");
                             ForkJoinSolver f = new ForkJoinSolver(maze, predecessor, nb);
+                            children.add(f);
                             f.fork();
                         }
                         else if (nbs == 0) {
@@ -117,12 +121,27 @@ public class ForkJoinSolver
                             frontier.push(nb);
                         }
                     }
-
+                }
+                if (nbs > 1) {
+                    return joinChildren(current);
                 }
             }
         }
-        //this.join();
+
         // all nodes explored, no goal found
+        return null;
+    }
+
+    private List<Integer> joinChildren(int current) {
+        for (ForkJoinSolver child : children) {
+            List<Integer> res = child.join();
+            if (res != null) {
+                List<Integer> path = pathFromTo(start,current);
+                path.addAll(res);
+                return path;
+                
+            }
+        }
         return null;
     }
 
