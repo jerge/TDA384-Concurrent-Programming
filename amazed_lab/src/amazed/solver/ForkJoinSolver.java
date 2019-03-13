@@ -35,9 +35,12 @@ public class ForkJoinSolver
         this.frontier = new Stack<>();
     }
 
+    // All nodes that has been visited by any ForkJoinSolver
     static protected ConcurrentSkipListSet<Integer> visited = new ConcurrentSkipListSet<>();
+    // A boolean to see if any ForkJoinSolver has found the goal
     static AtomicBoolean goalFound = new AtomicBoolean(false);
-    private List<ForkJoinSolver> children = new ArrayList<>();
+    // A list of all successors
+    private List<ForkJoinSolver> successors = new ArrayList<>();
 
 
     /**
@@ -77,54 +80,46 @@ public class ForkJoinSolver
         int player = maze.newPlayer(start);
         // start with start node
         frontier.push(start);
-
-        // as long as not all nodes have been processed
+        // as long as the player hasn't reached a dead end or the goal has been found
         while (!frontier.empty() && !goalFound.get()) {
             // get the new node to process
             int current = frontier.pop();
-            // move player to current node
-            if (current != start) {
+            // move player to current node, if it didn't already start on it (optimisation)
+            if (current != start)
                 maze.move(player, current);
-            }
             // if current node has a goal
             if (maze.hasGoal(current)) {
-                System.out.println("I won");
+                // set the common variable to instigate that the goal has been found
                 goalFound.set(true);
-                // search finished: reconstruct and return path
+                // search finished: reconstruct and return subpath
                 return pathFromTo(start,current);
             }
-            // if current node has not been visited yet
-            if (!ForkJoinSolver.visited.contains(current)) {
-                // mark node as visited
-                ForkJoinSolver.visited.add(current);
-                // for every node nb adjacent to current
-                int fakenbs = visitedNeighbours(maze.neighbors(current));
-                int nbs = (maze.neighbors(current)).size() - fakenbs;
-                System.out.println(nbs);
+            // if current node has not been visited yet, mark node as visited
+            if (ForkJoinSolver.visited.add(current)) {
+                int visitedNbs = visitedNeighbours(maze.neighbors(current));
+                // a variable to keep track of how many valid neighbours there are
+                int nbs = (maze.neighbors(current)).size() - visitedNbs;
+                // for every non-visited node nb adjacent to current
                 for (int nb : maze.neighbors(current)) {
-
-                    // add nb to the nodes to be processed
-
                     // if nb has not been already visited,
-                    // nb can be reached from current (i.e., current is nb's predecessor)
                     if (!ForkJoinSolver.visited.contains(nb)) {
+                        // nb can be reached from current (i.e., current is nb's predecessor)
                         predecessor.put(nb, current);
+                        // if there is a fork in the road, fork a new successor
                         if (nbs > 1) {
-                            System.out.println("forked");
                             ForkJoinSolver f = new ForkJoinSolver(maze, predecessor, nb);
-                            children.add(f);
+                            successors.add(f);
                             f.fork();
-                        }
-                        else if (nbs == 0) {
-                            //join();
+                        // if there wasn't a fork in the road, continue onwards
                         } else {
+                            // add nb to the nodes to be processed
                             frontier.push(nb);
                         }
                     }
                 }
-                if (nbs > 1) {
+                // if the player had successors, join them
+                if (nbs > 1)
                     return joinChildren(current);
-                }
             }
         }
 
@@ -132,27 +127,47 @@ public class ForkJoinSolver
         return null;
     }
 
+    /**
+     * Joins all ForkJoinSolver's successors
+     * @param current the current node the ForkJoinSolver is processing, used for path calculating
+     * @return if a successor found a goal,
+     * return the path from the successor added with the current ForkJoinSolver's traversed path
+     * otherwise return null
+     */
     private List<Integer> joinChildren(int current) {
-        for (ForkJoinSolver child : children) {
-            List<Integer> res = child.join();
+        // for each successor
+        for (ForkJoinSolver successor : successors) {
+            // join them
+            List<Integer> res = successor.join();
+            // disown all successors that didn't find the goal
             if (res != null) {
+                // create the ForkJoinSolver's path
                 List<Integer> path = pathFromTo(start,current);
+                // added with the path of the successor
                 path.addAll(res);
                 return path;
-                
+
             }
         }
+        // no successor found the goal
         return null;
     }
 
+    /**
+     * Calculate the amount of neighbours that has already been visited
+     * @param nbs the neighbours to check if they've been visited
+     * @return the amount of visited neighbours
+     */
     private int visitedNeighbours(Set<Integer> nbs) {
+        // initialize to 0
         int count = 0;
+        // foreach neighbour
         for (int nb : nbs) {
-            if (ForkJoinSolver.visited.contains(nb)) {
+            // if the neighbouring node has been visited
+            if (ForkJoinSolver.visited.contains(nb))
+                // add 1 to the counter
                 count++;
-            }
         }
-        //System.out.println(count);
         return count;
     }
 }
