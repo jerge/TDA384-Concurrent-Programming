@@ -84,11 +84,11 @@ public class ForkJoinSolver
         while (!frontier.empty() && !goalFound.get()) {
             // get the new node to process
             int current = frontier.pop();
-            // move player to current node, if it didn't already start on it (optimisation)
-            if (current != start)
-                maze.move(player, current);
             // if current node has a goal
             if (maze.hasGoal(current)) {
+                // move player to current node, if it didn't already start on it (optimisation)
+                if (current != start)
+                    maze.move(player, current);
                 // set the common variable to instigate that the goal has been found
                 goalFound.set(true);
                 // search finished: reconstruct and return subpath
@@ -96,6 +96,9 @@ public class ForkJoinSolver
             }
             // if current node has not been visited yet, mark node as visited
             if (ForkJoinSolver.visited.add(current)) {
+                // move player to current node, if it didn't already start on it (optimisation)
+                if (current != start)
+                    maze.move(player, current);
                 int visitedNbs = visitedNeighbours(maze.neighbors(current));
                 // a variable to keep track of how many valid neighbours there are
                 int nbs = (maze.neighbors(current)).size() - visitedNbs;
