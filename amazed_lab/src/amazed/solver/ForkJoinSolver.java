@@ -94,8 +94,10 @@ public class ForkJoinSolver
                 // search finished: reconstruct and return subpath
                 return pathFromTo(start,current);
             }
-            // if current node has not been visited yet, mark node as visited
-            if (ForkJoinSolver.visited.add(current)) {
+
+            // if current node has not been visited yet, mark node as visited.
+            // unless the player spawned on the tile and has already added it
+            if (ForkJoinSolver.visited.add(current) || current == start) {
                 // move player to current node, if it didn't already start on it (optimisation)
                 if (current != start)
                     maze.move(player, current);
@@ -108,8 +110,8 @@ public class ForkJoinSolver
                     if (!ForkJoinSolver.visited.contains(nb)) {
                         // nb can be reached from current (i.e., current is nb's predecessor)
                         predecessor.put(nb, current);
-                        // if there is a fork in the road, fork a new successor
-                        if (nbs > 1) {
+                        // if there is a fork in the road, fork a new successor and add nb to visited (since the new player spawns on it)
+                        if (nbs > 1 && ForkJoinSolver.visited.add(nb)) {
                             ForkJoinSolver f = new ForkJoinSolver(maze, predecessor, nb);
                             successors.add(f);
                             f.fork();
