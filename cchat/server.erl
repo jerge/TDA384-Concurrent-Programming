@@ -134,4 +134,3 @@ cases(ChannelState, Command) ->
       end
 
   end.
-
